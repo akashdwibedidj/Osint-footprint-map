@@ -1,0 +1,44 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: osint_postgres
+    environment:
+      POSTGRES_USER: osint_admin
+      POSTGRES_PASSWORD: osint_dev_pass
+      POSTGRES_DB: osint_footprint_map
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: osint_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/osint_dev_pass
+    ports:
+      - "7474:7474"   # browser UI
+      - "7687:7687"   # bolt protocol
+    volumes:
+      - neo4j_data:/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: osint_redis
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: osint_qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  pg_data:
+  neo4j_data:
+  qdrant_data:
