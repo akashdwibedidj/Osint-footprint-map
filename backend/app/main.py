@@ -6,9 +6,12 @@ from sqlalchemy.orm import Session
 from app.db.postgres import get_db, engine, Base
 from app.db.neo4j import get_neo4j_session, close_neo4j_driver
 from app.routers import sherlock_router
+from app.models import target, scan, finding
 
 app = FastAPI(title="OSINT Footprint Map")
 app.include_router(sherlock_router.router)
+
+Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
