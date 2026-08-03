@@ -62,4 +62,4 @@ class SherlockService:
         return await asyncio.to_thread(self._run_sherlock_sync, username, timeout)
 
 
-sherlock_service = SherlockService()
+sherlock_service = SherlockService()  

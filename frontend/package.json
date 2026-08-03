@@ -15,6 +15,7 @@
     "postcss": "^8.5.23",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-force-graph-2d": "^1.29.1",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {

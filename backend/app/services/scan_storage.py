@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
+from typing import List, Dict, Any
 
 from app.models.target import Target
 from app.models.scan import Scan
@@ -60,3 +61,46 @@ def store_sherlock_results(username: str, sherlock_result: dict, db: Session) ->
         "scan_id": str(scan.id),
         "findings_stored": len(findings),
     }
+
+def store_maigret_findings(username: str, findings: List[Dict[str, Any]], db: Session) -> dict:
+    """
+    Store Maigret findings in Postgres.
+    Reuses existing Target/Scan/Finding models.
+    """
+    # Get or create Target
+    target = db.query(Target).filter(Target.label == username).first()
+    if not target:
+        target = Target(label=username)
+        db.add(target)
+        db.flush()
+
+    # Create Scan row
+    scan = Scan(
+        target_id=target.id,
+        tool_used="maigret",
+        started_at=datetime.now(timezone.utc),
+        finished_at=datetime.now(timezone.utc),
+    )
+    db.add(scan)
+    db.flush()
+
+    # Create Finding rows (one per claimed platform)
+    for f in findings:
+        finding = Finding(
+            target_id=target.id,
+            scan_id=scan.id,
+            source=f["platform"],
+            source_url=f["url_user"],
+            raw_value=f["username"],
+            category=ExposureCategory.PERSONAL_IDENTIFIER,
+            risk_severity="unscored",
+            http_status=int(f["http_status"]) if f.get("http_status") else None,
+            extra_metadata={
+                "url_main": f["url_main"],
+                "tool": "maigret",
+            },
+        )
+        db.add(finding)
+
+    db.commit()
+    return {"target_id": str(target.id), "scan_id": str(scan.id)}

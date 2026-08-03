@@ -5,17 +5,18 @@ from sqlalchemy.orm import Session
 
 from app.db.postgres import get_db, engine, Base
 from app.db.neo4j import get_neo4j_session, close_neo4j_driver
-from app.routers import sherlock_router
+from app.routers import sherlock_router, maigret_router
 from app.models import target, scan, finding
 
 app = FastAPI(title="OSINT Footprint Map")
-app.include_router(sherlock_router.router)
+app.include_router(sherlock_router.router, prefix="/scan")
+app.include_router(maigret_router.router)  # Maigret has its own /maigret prefix
 
-Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -30,6 +31,10 @@ def shutdown():
 
 @app.get("/health")
 def health():
+    return {"status": "ok"}
+
+@app.get("/health")
+async def health_check():
     return {"status": "ok"}
 
 @app.get("/health/postgres")
