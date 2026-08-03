@@ -63,18 +63,12 @@ def store_sherlock_results(username: str, sherlock_result: dict, db: Session) ->
     }
 
 def store_maigret_findings(username: str, findings: List[Dict[str, Any]], db: Session) -> dict:
-    """
-    Store Maigret findings in Postgres.
-    Reuses existing Target/Scan/Finding models.
-    """
-    # Get or create Target
     target = db.query(Target).filter(Target.label == username).first()
     if not target:
         target = Target(label=username)
         db.add(target)
         db.flush()
 
-    # Create Scan row
     scan = Scan(
         target_id=target.id,
         tool_used="maigret",
@@ -84,7 +78,6 @@ def store_maigret_findings(username: str, findings: List[Dict[str, Any]], db: Se
     db.add(scan)
     db.flush()
 
-    # Create Finding rows (one per claimed platform)
     for f in findings:
         finding = Finding(
             target_id=target.id,
@@ -94,10 +87,26 @@ def store_maigret_findings(username: str, findings: List[Dict[str, Any]], db: Se
             raw_value=f["username"],
             category=ExposureCategory.PERSONAL_IDENTIFIER,
             risk_severity="unscored",
-            http_status=int(f["http_status"]) if f.get("http_status") else None,
+            http_status=f["http_status"],
             extra_metadata={
                 "url_main": f["url_main"],
                 "tool": "maigret",
+                "tags": f.get("tags", []),
+                "rank": f.get("rank"),
+                "is_similar": f.get("is_similar"),
+                # Rich profile data
+                "fullname": f.get("fullname"),
+                "bio": f.get("bio"),
+                "image": f.get("image"),
+                "follower_count": f.get("follower_count"),
+                "following_count": f.get("following_count"),
+                "is_verified": f.get("is_verified"),
+                "is_private": f.get("is_private"),
+                "is_business": f.get("is_business"),
+                "external_url": f.get("external_url"),
+                "facebook_uid": f.get("facebook_uid"),
+                "extractor": f.get("extractor"),
+                "raw_ids": f.get("raw_ids"),
             },
         )
         db.add(finding)

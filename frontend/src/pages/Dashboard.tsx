@@ -105,7 +105,7 @@ const handleSelectTool = (id: string) => {
           {lastQuery && viewMode === "graph" ? (
             <GraphView username={lastQuery} toolId={activeToolId} />  // ADD toolId here
           ) : (
-            <FindingsTable findings={findings} loading={loadingFindings} />
+            <FindingsTable findings={findings} loading={loadingFindings} toolId={activeToolId} />
           )}
         </main>
       </div>

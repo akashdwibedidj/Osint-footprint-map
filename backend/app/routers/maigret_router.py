@@ -58,6 +58,7 @@ def get_maigret_findings(username: str, db: Session = Depends(get_db)):
         "total_findings": len(findings),
         "findings": [
             {
+                "id": str(f.id),
                 "source": f.source,
                 "source_url": f.source_url,
                 "raw_value": f.raw_value,

@@ -4,6 +4,7 @@ export interface Finding {
   category: string;
   risk_severity: string;
   discovered_at: string | null;
+  extra_metadata?: Record<string, any>;  // ADD THIS LINE
 }
 
 export interface ScanResult {
