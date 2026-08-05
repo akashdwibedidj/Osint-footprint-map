@@ -1,9 +1,18 @@
 backend/venv
-backend/__pycache__
-backend/app/__pycache__
-backend/app/models/__pycache__
-backend/app/schemas/__pycache__
-backend/app/services/__pycache__
-backend/app/utils/__pycache__
 backend/.env
-    
+**/__pycache__/
+*.pyc
+
+# Tool scan output / debug artifacts — never commit scan results
+backend/debug_json/
+backend/debug_json2/
+backend/maigret_test/
+backend/maigret_json_test/
+backend/output/
+backend/test_json/
+backend/result.json
+backend/*.csv
+backend/*.txt
+
+frontend/node_modules
+frontend/dist

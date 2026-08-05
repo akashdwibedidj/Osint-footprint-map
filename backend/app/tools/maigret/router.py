@@ -1,15 +1,16 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.services.maigret_service import run_maigret_async
-from app.services.scan_storage import store_maigret_findings
-from app.services.neo4j_storage import store_maigret_graph
-from app.services.neo4j_query import get_target_graph
-from app.db.postgres import get_db
 from app.db.neo4j import driver
-from app.models.target import Target
+from app.db.postgres import get_db
 from app.models.finding import Finding
 from app.models.scan import Scan
+from app.models.target import Target
+from app.services import storage
+from app.services.neo4j_query import get_target_graph
+from app.tools.maigret import service
+
+TOOL_ID = "maigret"
 
 router = APIRouter(prefix="/maigret", tags=["maigret"])
 
@@ -17,26 +18,22 @@ router = APIRouter(prefix="/maigret", tags=["maigret"])
 @router.post("/username/{username}")
 async def scan_maigret_username(username: str, db: Session = Depends(get_db)):
     try:
-        findings = await run_maigret_async(username)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Maigret scan failed: {e}")
+        findings = await service.run(username)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     try:
-        storage_result = store_maigret_findings(username, findings, db)
+        pg_result = storage.store_findings(TOOL_ID, username, findings, db)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Postgres storage failed: {e}")
 
     try:
         with driver.session() as session:
-            store_maigret_graph(username, findings, session)
+            storage.store_graph(TOOL_ID, username, findings, session)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Neo4j storage failed: {e}")
 
-    return {
-        "username": username,
-        "findings_count": len(findings),
-        **storage_result,
-    }
+    return {"username": username, "findings_count": len(findings), **pg_result}
 
 
 @router.get("/username/{username}")
@@ -48,7 +45,7 @@ def get_maigret_findings(username: str, db: Session = Depends(get_db)):
     findings = (
         db.query(Finding)
         .join(Scan)
-        .filter(Finding.target_id == target.id, Scan.tool_used == "maigret")
+        .filter(Finding.target_id == target.id, Scan.tool_used == TOOL_ID)
         .all()
     )
 
@@ -76,8 +73,6 @@ def get_maigret_findings(username: str, db: Session = Depends(get_db)):
 def get_maigret_graph(username: str):
     with driver.session() as session:
         graph = get_target_graph(username, session)
-
     if not graph["nodes"]:
         raise HTTPException(status_code=404, detail=f"No graph data found for '{username}'")
-
     return graph
