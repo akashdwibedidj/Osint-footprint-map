@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16
@@ -19,8 +17,8 @@ services:
     environment:
       NEO4J_AUTH: neo4j/osint_dev_pass
     ports:
-      - "7474:7474"   # browser UI
-      - "7687:7687"   # bolt protocol
+      - "7474:7474"
+      - "7687:7687"
     volumes:
       - neo4j_data:/data
 
