@@ -17,13 +17,14 @@ from app.models.finding import ExposureCategory
 
 @dataclass
 class NormalizedFinding:
-    source: str                    # e.g. "GitHub", "Instagram"
-    source_url: str                # profile / page URL
-    raw_value: str                 # the identifier that was searched (username, email, ...)
+    source: str
+    source_url: str
+    raw_value: str
     category: ExposureCategory = ExposureCategory.PERSONAL_IDENTIFIER
     http_status: Optional[int] = None
     response_time_s: Optional[float] = None
     extra_metadata: dict[str, Any] = field(default_factory=dict)
+    content_hash: str = ""   # NEW — computed centrally in storage.py, tools never set this
 
 
 class ToolPlugin:

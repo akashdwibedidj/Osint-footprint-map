@@ -29,7 +29,7 @@ async def scan_maigret_username(username: str, db: Session = Depends(get_db)):
 
     try:
         with driver.session() as session:
-            storage.store_graph(TOOL_ID, username, findings, session)
+            storage.store_graph(tool_id="maigret", target_label=username, findings=findings, session=session, identifier_type="username")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Neo4j storage failed: {e}")
 

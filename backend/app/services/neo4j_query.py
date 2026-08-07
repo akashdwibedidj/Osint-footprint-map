@@ -2,58 +2,51 @@ def get_target_graph(username: str, session) -> dict:
     """
     Returns nodes + edges for a target's footprint graph:
     (Target)-[:HAS_IDENTIFIER]->(Identifier)-[:FOUND_ON]->(Platform)
+    A target may now have multiple Identifiers (different types).
     """
-
     query = """
     MATCH (t:Target {name: $username})-[:HAS_IDENTIFIER]->(i:Identifier)
     OPTIONAL MATCH (i)-[r:FOUND_ON]->(p:Platform)
-    RETURN t, i, collect(r) AS rels, collect(p) AS platforms
+    RETURN t, i, r, p
     """
 
     result = session.run(query, username=username)
-    record = result.single()
+    records = list(result)
 
-    if not record or record["t"] is None:
+    if not records:
         return {"nodes": [], "edges": []}
 
-    nodes = []
+    nodes: dict[str, dict] = {}
     edges = []
 
-    target_node = record["t"]
-    identifier_node = record["i"]
-    platforms = record["platforms"]
-    rels = record["rels"]
+    target_node = records[0]["t"]
+    target_id = f"target-{target_node['name']}"
+    nodes[target_id] = {"id": target_id, "label": target_node["name"], "type": "Target"}
 
-    nodes.append({
-        "id": f"target-{target_node['name']}",
-        "label": target_node["name"],
-        "type": "Target",
-    })
-    nodes.append({
-        "id": f"identifier-{identifier_node['value']}",
-        "label": identifier_node["value"],
-        "type": "Identifier",
-    })
-    edges.append({
-        "source": f"target-{target_node['name']}",
-        "target": f"identifier-{identifier_node['value']}",
-        "type": "HAS_IDENTIFIER",
-    })
+    for rec in records:
+        i = rec["i"]
+        identifier_id = f"identifier-{i['type']}-{i['value']}"
+        if identifier_id not in nodes:
+            nodes[identifier_id] = {
+                "id": identifier_id,
+                "label": i["value"],
+                "type": "Identifier",
+                "identifier_type": i["type"],
+            }
+            edges.append({"source": target_id, "target": identifier_id, "type": "HAS_IDENTIFIER"})
 
-    for platform, rel in zip(platforms, rels):
-        if platform is None:
+        p, r = rec["p"], rec["r"]
+        if p is None:
             continue
-        platform_id = f"platform-{platform['name']}"
-        nodes.append({
-            "id": platform_id,
-            "label": platform["name"],
-            "type": "Platform",
-        })
+        platform_id = f"platform-{p['name']}"
+        if platform_id not in nodes:
+            nodes[platform_id] = {"id": platform_id, "label": p["name"], "type": "Platform"}
         edges.append({
-            "source": f"identifier-{identifier_node['value']}",
+            "source": identifier_id,
             "target": platform_id,
             "type": "FOUND_ON",
-            "url": rel.get("url") if rel else None,
+            "url": r.get("url") if r else None,
+            "discovered_by": r.get("discovered_by") if r else None,
         })
 
-    return {"nodes": nodes, "edges": edges}
+    return {"nodes": list(nodes.values()), "edges": edges}
