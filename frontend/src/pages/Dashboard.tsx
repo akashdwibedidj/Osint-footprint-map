@@ -8,6 +8,7 @@ import { api } from "../api/client";
 import { TOOLS } from "../config/tools";
 import type { Finding, FindingsResponse } from "../types";
 import History from "../components/History";
+import ScanFormUpload from "../components/ScanFormUpload";
 
 type ViewMode = "table" | "graph";
 
@@ -70,7 +71,11 @@ const handleSelectTool = (id: string) => {
           
           <History onSelect={(username, toolId) => fetchFindings(username, toolId)} />
 
-          <ScanForm tool={activeTool} onScanComplete={fetchFindings} />
+          {activeTool.inputType === "file" ? (
+            <ScanFormUpload tool={activeTool} onScanComplete={fetchFindings} />
+          ) : (
+            <ScanForm tool={activeTool} onScanComplete={fetchFindings} />
+          )}
 
           {lastQuery && (
             <div className="flex items-center justify-between mb-3">

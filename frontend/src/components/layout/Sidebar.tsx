@@ -1,13 +1,12 @@
-
+import { Link } from "react-router-dom";
 import type { ToolConfig } from "../../types";
 
 interface SidebarProps {
   tools: ToolConfig[];
   activeToolId: string;
-  onSelectTool: (id: string) => void;
 }
 
-export default function Sidebar({ tools, activeToolId, onSelectTool }: SidebarProps) {
+export default function Sidebar({ tools, activeToolId }: SidebarProps) {
   return (
     <aside className="w-64 shrink-0 bg-zinc-950 border-r border-zinc-800 h-screen flex flex-col">
       <div className="px-4 py-5 border-b border-zinc-800">
@@ -22,17 +21,17 @@ export default function Sidebar({ tools, activeToolId, onSelectTool }: SidebarPr
           Tools
         </p>
         {tools.map((tool) => (
-          <button
+          <Link
             key={tool.id}
-            onClick={() => onSelectTool(tool.id)}
-            className={`w-full text-left px-4 py-2 text-sm font-mono transition-colors ${
+            to={`/tools/${tool.id}`}
+            className={`block w-full text-left px-4 py-2 text-sm font-mono transition-colors ${
               activeToolId === tool.id
                 ? "bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-400"
                 : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 border-l-2 border-transparent"
             }`}
           >
             {tool.label}
-          </button>
+          </Link>
         ))}
       </nav>
 

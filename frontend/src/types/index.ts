@@ -28,15 +28,7 @@ export interface FindingsResponse {
   findings: Finding[];
 }
 
-export interface ToolConfig {
-  id: string;
-  label: string;
-  inputLabel: string;
-  inputPlaceholder: string;
-  scanEndpoint: (input: string) => string;
-  fetchEndpoint: (input: string) => string;
-  graphEndpoint: (input: string) => string;
-}
+export interface ToolConfig { id: string; label: string }
 
 export interface HistoryItem {
   username: string;
@@ -45,3 +37,4 @@ export interface HistoryItem {
   scanned_at: string | null;
   findings_count: number;
 }
+
