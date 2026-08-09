@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.neo4j import driver
@@ -8,18 +8,18 @@ from app.models.scan import Scan
 from app.models.target import Target
 from app.services import storage
 from app.services.neo4j_query import get_target_graph
-from app.tools.exif_extractor import service
+from app.tools.gitleak_scanner import service
 
-TOOL_ID = "exif_extractor"
-router = APIRouter(prefix="/exif_extractor", tags=["exif_extractor"])
+TOOL_ID = "gitleak_scanner"
+router = APIRouter(prefix="/gitleak_scanner", tags=["gitleak_scanner"])
 
 
-@router.post("/image_url/{value:path}")
-async def scan_exif_extractor(value: str, db: Session = Depends(get_db)):
+@router.post("/repo/{value:path}")
+async def scan_gitleak_scanner(value: str, db: Session = Depends(get_db)):
     try:
         findings = await service.run(value)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
     try:
         pg_result = storage.store_findings(TOOL_ID, value, findings, db)
@@ -33,7 +33,7 @@ async def scan_exif_extractor(value: str, db: Session = Depends(get_db)):
                 target_label=value,
                 findings=findings,
                 session=session,
-                identifier_type="image_url",
+                identifier_type="repo_url",
             )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Neo4j storage failed: {e}")
@@ -41,38 +41,8 @@ async def scan_exif_extractor(value: str, db: Session = Depends(get_db)):
     return {"value": value, "findings_count": len(findings), **pg_result}
 
 
-@router.post("/upload")
-async def scan_exif_extractor_upload(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    image_bytes = await file.read()
-    value = file.filename or "uploaded_image"
-
-    try:
-        findings = await service.run(value, image_bytes=image_bytes)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    try:
-        pg_result = storage.store_findings(TOOL_ID, value, findings, db)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Postgres storage failed: {e}")
-
-    try:
-        with driver.session() as session:
-            storage.store_graph(
-                tool_id=TOOL_ID,
-                target_label=value,
-                findings=findings,
-                session=session,
-                identifier_type="image_filename",
-            )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Neo4j storage failed: {e}")
-
-    return {"value": value, "findings_count": len(findings), **pg_result}
-
-
-@router.get("/image_url/{value:path}")
-def get_exif_extractor_findings(value: str, db: Session = Depends(get_db)):
+@router.get("/repo/{value:path}")
+def get_gitleak_scanner_findings(value: str, db: Session = Depends(get_db)):
     target = db.query(Target).filter(Target.label == value).first()
     if not target:
         raise HTTPException(status_code=404, detail=f"No scans found for '{value}'")
@@ -105,7 +75,7 @@ def get_exif_extractor_findings(value: str, db: Session = Depends(get_db)):
 
 
 @router.get("/graph/{value:path}")
-def get_exif_extractor_graph(value: str):
+def get_gitleak_scanner_graph(value: str):
     with driver.session() as session:
         graph = get_target_graph(value, session)
     if not graph["nodes"]:

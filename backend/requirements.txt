@@ -1,7 +1,27 @@
+# --- Web framework ---
 fastapi
-uvicorn
+uvicorn[standard]
+python-multipart          # required for FastAPI UploadFile (exif_extractor /upload endpoint)
+
+# --- Config / env ---
+python-dotenv
+pydantic-settings
+
+# --- Databases ---
 sqlalchemy
 psycopg2-binary
 neo4j
-python-dotenv
-pydantic-settings
+
+# --- Tool: exif_extractor ---
+Pillow
+requests
+
+# --- Tool: haveibeenpwned ---
+# (uses `requests`, already listed above)
+
+# --- Tool: sherlock / maigret ---
+# These are CLI tools invoked via subprocess (settings.sherlock_cmd / settings.maigret_cmd),
+# NOT imported as Python libraries, but they must be installed in the same environment
+# so the `sherlock` / `maigret` commands exist on PATH.
+sherlock-project
+maigret
