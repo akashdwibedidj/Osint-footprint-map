@@ -25,3 +25,6 @@ requests
 # so the `sherlock` / `maigret` commands exist on PATH.
 sherlock-project
 maigret
+
+instaloader
+httpx

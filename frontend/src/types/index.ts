@@ -1,10 +1,11 @@
 export interface Finding {
   source: string;
   source_url: string;
+  raw_value: string;        // ADD — backend always returns this
   category: string;
   risk_severity: string;
   discovered_at: string | null;
-  extra_metadata?: Record<string, any>;  // ADD THIS LINE
+  extra_metadata?: Record<string, any>;
 }
 
 export interface ScanResult {

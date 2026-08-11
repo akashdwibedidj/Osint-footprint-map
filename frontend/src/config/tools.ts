@@ -6,4 +6,5 @@ export const TOOLS: ToolConfig[] = [
   { id: "haveibeenpwned", label: "HaveIBeenPwned — Email Breach Check" },
   { id: "exif_extractor", label: "EXIF Extractor — Image Metadata" },
   { id: "gitleak_scanner", label: "Gitleaks — Repo Secret Scan" },
+  { id: "instaloader", label: "Instaloader — Instagram Profile Scan" },
 ];
