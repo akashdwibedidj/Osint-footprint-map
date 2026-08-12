@@ -13,9 +13,11 @@ from app.services import risk_scoring
 
 
 def make_content_hash(f: NormalizedFinding) -> str:
-    key = f"{f.source}:{f.raw_value}:{f.source_url}"
+    if f.source == "instaloader" and f.extra_metadata.get("field") == "post_image":
+        key = f"{f.source}:post_image:{f.extra_metadata.get('shortcode')}"
+    else:
+        key = f"{f.source}:{f.raw_value}:{f.source_url}"
     return hashlib.sha256(key.encode()).hexdigest()
-
 
 def store_findings(
     tool_id: str,

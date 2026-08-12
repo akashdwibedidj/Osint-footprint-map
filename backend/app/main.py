@@ -8,9 +8,12 @@ from app.db.neo4j import close_neo4j_driver, get_neo4j_session
 from app.db.postgres import Base, engine, get_db
 from app.models import finding, scan, target  # noqa: F401 (ensures tables are registered)
 from app.routers import core_router
+from app.routers.history import router as history_router
+
 
 app = FastAPI(title="OSINT Footprint Map")
 
+app.include_router(history_router)
 app.include_router(core_router.router)
 registered_tools = register_tools(app)  # auto-mounts every app/tools/<name>/router.py
 
