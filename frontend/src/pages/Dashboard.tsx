@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   const activeTool = TOOLS.find((t) => t.id === activeToolId)!;
+  const [historyKey, setHistoryKey] = useState(0);
 
   useEffect(() => {
     api
@@ -43,6 +44,7 @@ export default function Dashboard() {
         const res = await api.get<FindingsResponse>(tool.fetchEndpoint(input));
         setFindings(res.data.findings);
         setLastQuery(input);
+        setHistoryKey((k) => k + 1); // <-- add this line
       } catch {
         setFindings([]);
       } finally {

@@ -10,6 +10,20 @@ class Settings(BaseSettings):
     sherlock_cmd: str = "sherlock"
     maigret_cmd: str = "maigret"
 
+    # --- audio_analysis ---
+    upload_dir: str = "uploads"
+    whisper_model_size: str = "small"       # tiny/base/small/medium/large-v3/distil-large-v3
+                                             # "small" is the CPU-friendly default so this repo
+                                             # runs out of the box on any machine, no CUDA setup
+                                             # required. If you have a working GPU/CUDA
+                                             # environment (e.g. WSL), override in .env:
+                                             #   WHISPER_MODEL_SIZE=medium
+                                             #   WHISPER_DEVICE=cuda
+                                             #   WHISPER_COMPUTE_TYPE=float16
+    whisper_device: str = "cpu"
+    whisper_compute_type: str = "int8"      # faster-whisper's recommended CPU quantization -
+                                             # meaningfully faster than default float32 on CPU
+
     class Config:
         env_file = ".env"
 

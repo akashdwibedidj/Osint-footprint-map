@@ -3,52 +3,38 @@ import { api } from "../api/client";
 import type { HistoryItem } from "../types";
 
 interface HistoryProps {
-  onSelect: (username: string, toolId: string) => void;
+  toolId: string;
+  onSelect: (username: string) => void;
 }
 
-export default function History({ onSelect }: HistoryProps) {
+export default function History({ toolId, onSelect }: HistoryProps) {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api
-      .get("/scan/history")
-      .then((res) => setItems(res.data.targets))
+      .get<HistoryItem[]>("/history")
+      .then((res) => setItems(res.data.filter((i) => i.tool_id === toolId)))
       .catch(() => setItems([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [toolId]);
 
-  if (loading) {
-    return <p className="text-zinc-600 font-mono text-xs">Loading history...</p>;
-  }
-
-  if (items.length === 0) {
-    return (
-      <p className="text-zinc-600 font-mono text-xs border border-zinc-800 rounded p-3">
-        No scans yet. Run one above.
-      </p>
-    );
-  }
+  if (loading || items.length === 0) return null;
 
   return (
-    <div className="border border-zinc-800 rounded-md bg-zinc-950 mb-6">
-      <p className="px-3 py-2 text-[10px] uppercase tracking-wider text-zinc-500 font-mono border-b border-zinc-800">
-        Previously scanned
+    <div className="mb-6 border border-zinc-800 rounded-md bg-zinc-950 p-3">
+      <p className="text-zinc-600 text-[10px] uppercase tracking-wider font-mono mb-2">
+        Recent scans
       </p>
-      <div className="max-h-40 overflow-y-auto">
+      <div className="flex flex-wrap gap-2">
         {items.map((item) => (
           <button
             key={item.target_id}
-            onClick={() => onSelect(item.username, item.tool_id)}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono text-zinc-300 hover:bg-zinc-900 border-b border-zinc-900 last:border-0"
+            onClick={() => onSelect(item.username)}
+            className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded text-xs font-mono text-zinc-300"
           >
-            <div className="flex items-center gap-2">
-              <span>{item.username}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">
-                {item.tool_id}
-              </span>
-            </div>
-            <span className="text-zinc-600">{item.findings_count} findings</span>
+            {item.username}
+            <span className="text-zinc-600"> ({item.findings_count})</span>
           </button>
         ))}
       </div>

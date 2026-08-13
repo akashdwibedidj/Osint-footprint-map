@@ -28,3 +28,14 @@ maigret
 
 instaloader
 httpx
+
+
+# --- Tool: audio_analysis ---
+setuptools           # tensorflow/tensorflow_hub import pkg_resources internally; not in venv by default on newer Python
+faster-whisper
+librosa
+soundfile
+imageio-ffmpeg      # bundles a static ffmpeg binary in the venv, no system install needed
+tensorflow
+tensorflow-hub
+numpy

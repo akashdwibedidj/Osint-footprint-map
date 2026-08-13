@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../../../api/client";
+import History from "../../History"; // adjust path to wherever History.tsx actually lives
 
 interface InstaFinding {
   source: string;
@@ -27,6 +28,7 @@ function proxied(url: string | undefined): string | undefined {
   return `${API_BASE}/instaloader/image_proxy?url=${encodeURIComponent(url)}`;
 }
 
+
 export default function InstaloaderView() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,8 +36,22 @@ export default function InstaloaderView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<InstaFinding | null>(null);
 
-  const runScan = async () => {
-    const value = username.trim().replace(/^@/, "");
+  const loadProfile = async (value: string) => {
+    setLoading(true);
+    setError(null);
+    setSelectedPost(null);
+    try {
+      const res = await api.get(`/instaloader/profile/${encodeURIComponent(value)}`);
+      setFindings(res.data.findings);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || "Failed to load profile.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runScan = async (overrideValue?: string) => {
+    const value = (overrideValue ?? username).trim().replace(/^@/, "");
     if (!value) return;
     setLoading(true);
     setError(null);
@@ -64,6 +80,13 @@ export default function InstaloaderView() {
 
   return (
     <div>
+      <History
+        toolId="instaloader"
+        onSelect={(uname) => {
+          setUsername(uname);
+          loadProfile(uname.trim().replace(/^@/, "")); // just fetch, no rescan
+        }}
+      />
       {/* Search bar */}
       <div className="border border-zinc-800 rounded-md bg-zinc-950 p-4 mb-6">
         <div className="flex gap-2">
