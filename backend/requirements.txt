@@ -39,3 +39,11 @@ imageio-ffmpeg      # bundles a static ffmpeg binary in the venv, no system inst
 tensorflow
 tensorflow-hub
 numpy
+
+# --- Tool: video_analysis ---
+torch
+torchvision
+ultralytics
+transformers
+pytesseract
+# geopy

@@ -6,6 +6,9 @@ import HaveIBeenPwnedView from "./components/tools/haveibeenpwned/HaveIBeenPwned
 import ExifExtractorView from "./components/tools/exif_extractor/ExifExtractorView";
 import GitleakScannerView from "./components/tools/gitleak_scanner/GitleakScannerView";
 import InstaloaderView from "./components/tools/instaloader/InstaloaderView";
+import VideoAnalysisView from "./components/tools/video_analysis/VideoAnalysisView";
+import AudioAnalysisView from "./components/tools/audio_analysis/AudioAnalysisView";
+
 
 import "./App.css";
 
@@ -21,6 +24,8 @@ function App() {
           <Route path="/tools/exif_extractor" element={<ExifExtractorView />} />
           <Route path="/tools/gitleak_scanner" element={<GitleakScannerView />} />
           <Route path="/tools/instaloader" element={<InstaloaderView />} />
+          <Route path="/tools/video_analysis" element={<VideoAnalysisView />} />
+          <Route path="/tools/audio_analysis" element={<AudioAnalysisView />} />
         </Routes>
       </Shell>
     </BrowserRouter>

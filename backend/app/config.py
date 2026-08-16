@@ -27,5 +27,12 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
+    yolo_model_name: str = "yolov8n.pt"
+    blip_model_name: str = "Salesforce/blip-image-captioning-base"
+    clip_model_name: str = "openai/clip-vit-base-patch32"
+    video_device: str = "cpu"
+
+    tesseract_cmd: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
 
 settings = Settings()

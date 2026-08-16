@@ -123,3 +123,9 @@ async def run(
         )
 
     return findings
+
+
+def get_gps_coordinates(image_bytes: bytes) -> dict | None:
+    """Public entry point for other tools that just need GPS, not the full finding pipeline."""
+    exif_data = _extract_exif(image_bytes)
+    return exif_data.get("GPSCoordinates")
