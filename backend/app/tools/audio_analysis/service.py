@@ -11,11 +11,12 @@ from app.core.tool_base import NormalizedFinding
 from app.db.postgres import SessionLocal
 from app.models.finding import ExposureCategory
 from app.models.scan import Scan
+from app.models.target import Target
 from app.services import storage
 from app.tools.audio_analysis import model_loader, utils
 
 TOOL_ID = "audio_analysis"
-
+ACCEPTED_INPUTS = {"audio", "video"}
 # How much of the overall 0-100 progress bar each real stage accounts for.
 # This isn't a time estimate - it's just how we split the bar across the
 # ordered steps so "progress" only ever reflects work actually completed
@@ -158,6 +159,35 @@ def _build_findings(
 
     return findings
 
+def run_from_path(target_label: str, file_path: str, investigation_id: uuid.UUID | None = None) -> uuid.UUID:
+    db = SessionLocal()
+    try:
+        target = db.query(Target).filter(Target.label == target_label).first()
+        if not target:
+            target = Target(label=target_label)
+            db.add(target)
+            db.flush()
+
+        scan = Scan(
+            target_id=target.id,
+            tool_used=TOOL_ID,
+            status="pending",
+            progress=0,
+            investigation_id=investigation_id,
+        )
+        db.add(scan)
+        db.commit()
+        db.refresh(scan)
+        scan_id = scan.id
+    finally:
+        db.close()
+
+    wav_path = os.path.join(os.path.dirname(file_path), f"{scan_id}.wav")
+    utils.convert_to_wav(file_path, wav_path)
+
+    process_audio_job(scan_id, target_label, file_path, wav_path)
+
+    return scan_id
 
 def process_audio_job(scan_id: uuid.UUID, target_label: str, original_path: str, wav_path: str) -> None:
     """

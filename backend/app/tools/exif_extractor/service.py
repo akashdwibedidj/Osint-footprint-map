@@ -1,5 +1,8 @@
 import asyncio
 import io
+import os
+import uuid
+from datetime import datetime, timezone
 
 import requests
 from PIL import Image
@@ -7,7 +10,13 @@ from PIL.ExifTags import GPSTAGS, TAGS
 
 from app.models.finding import ExposureCategory
 from app.services.storage import NormalizedFinding
+from app.db.postgres import SessionLocal
+from app.models.scan import Scan
+from app.models.target import Target
+from app.services import storage
 
+TOOL_ID = "exif_extractor"
+ACCEPTED_INPUTS = {"image"}
 
 def _convert_to_degrees(value):
     """Convert GPS coordinates stored as (deg, min, sec) rationals to decimal degrees."""
@@ -129,3 +138,86 @@ def get_gps_coordinates(image_bytes: bytes) -> dict | None:
     """Public entry point for other tools that just need GPS, not the full finding pipeline."""
     exif_data = _extract_exif(image_bytes)
     return exif_data.get("GPSCoordinates")
+
+
+def _set_scan(scan_id: uuid.UUID, **fields) -> None:
+    db = SessionLocal()
+    try:
+        scan = db.query(Scan).filter(Scan.id == scan_id).first()
+        if not scan:
+            return
+        for k, v in fields.items():
+            setattr(scan, k, v)
+        db.commit()
+    finally:
+        db.close()
+
+
+def run_from_path(target_label: str, file_path: str, investigation_id: uuid.UUID | None = None) -> uuid.UUID:
+    """
+    Sync entry point for the Celery task. Wraps the existing async run()
+    in asyncio.run() since this executes inside a worker process, not
+    the FastAPI event loop.
+    """
+    db = SessionLocal()
+    try:
+        target = db.query(Target).filter(Target.label == target_label).first()
+        if not target:
+            target = Target(label=target_label)
+            db.add(target)
+            db.flush()
+
+        scan = Scan(
+            target_id=target.id,
+            tool_used=TOOL_ID,
+            status="pending",
+            progress=0,
+            investigation_id=investigation_id,
+        )
+        db.add(scan)
+        db.commit()
+        db.refresh(scan)
+        scan_id = scan.id
+    finally:
+        db.close()
+
+    try:
+        _set_scan(scan_id, status="running", stage="extracting_exif", progress=10)
+
+        with open(file_path, "rb") as f:
+            image_bytes = f.read()
+
+        findings = asyncio.run(
+            run(target_value=os.path.basename(file_path), image_bytes=image_bytes)
+        )
+
+        _set_scan(scan_id, progress=80)
+
+        db = SessionLocal()
+        try:
+            storage.store_findings(TOOL_ID, target_label, findings, db)
+        finally:
+            db.close()
+
+        from app.db.neo4j import driver
+        with driver.session() as session:
+            storage.store_graph(
+                tool_id=TOOL_ID,
+                target_label=target_label,
+                findings=findings,
+                session=session,
+                identifier_type="image_upload",
+            )
+
+        _set_scan(
+            scan_id,
+            status="done",
+            stage="extracting_exif",
+            progress=100,
+            finished_at=datetime.now(timezone.utc),
+        )
+
+    except Exception as e:
+        _set_scan(scan_id, status="failed", error_message=f"{type(e).__name__}: {e}")
+
+    return scan_id

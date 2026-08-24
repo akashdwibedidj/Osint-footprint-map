@@ -10,6 +10,7 @@ class Scan(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     target_id = Column(UUID(as_uuid=True), ForeignKey("targets.id"), nullable=False)
+    investigation_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     tool_used = Column(String, nullable=False, default="sherlock")
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     finished_at = Column(DateTime(timezone=True), nullable=True)
@@ -23,3 +24,4 @@ class Scan(Base):
     stage = Column(String, nullable=True)                        # e.g. "transcribing", "tagging_sounds"
     progress = Column(Integer, nullable=False, default=0)        # 0-100, reflects real work done only
     error_message = Column(String, nullable=True)
+

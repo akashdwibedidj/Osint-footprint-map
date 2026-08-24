@@ -27,15 +27,23 @@ OSINT_FOOTPRINT_MAPPING
             │   ├── __init__.py
             │   ├── router.py
             │   └── service.py
-            ├── haveibeenpwned
+            ├── haveibeenpwned(not working! missing api)
+                └── __init__.py
+                ├── router.py
+            │   └── service.py
             ├── instaloader
             │   ├── __pycache__
             │   ├── __init__.py
             │   ├── router.py
             │   └── service.py
             ├── maigret
+                    __init__.py
+            │   ├── router.py
+            │   └── service.py
             └── sherlock
                 └── __init__.py
+                ├── router.py
+            │   └── service.py
 
 
 

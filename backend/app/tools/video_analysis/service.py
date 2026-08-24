@@ -10,6 +10,7 @@ from app.services import storage
 from app.tools.video_analysis import frame_extractor, geolocation, model_loader, utils
 
 TOOL_ID = "video_analysis"
+ACCEPTED_INPUTS = {"image", "video"}
 
 STAGE_WEIGHTS_VIDEO = {
     "extracting_frames": (0, 15),
@@ -159,6 +160,39 @@ def _build_frame_findings(
 
     return findings
 
+def run_from_path(target_label: str, file_path: str, investigation_id: uuid.UUID | None = None) -> uuid.UUID:
+    """
+    Sync entry point for the Celery task. Creates the target/scan rows
+    that process_video_job expects to already exist, then delegates.
+    """
+    from app.models.target import Target
+
+    db = SessionLocal()
+    try:
+        target = db.query(Target).filter(Target.label == target_label).first()
+        if not target:
+            target = Target(label=target_label)
+            db.add(target)
+            db.flush()
+
+        scan = Scan(
+            target_id=target.id,
+            tool_used=TOOL_ID,
+            status="pending",
+            progress=0,
+            investigation_id=investigation_id,
+        )
+        db.add(scan)
+        db.commit()
+        db.refresh(scan)
+        scan_id = scan.id
+    finally:
+        db.close()
+
+    filename = os.path.basename(file_path)
+    process_video_job(scan_id, target_label, file_path, filename)
+
+    return scan_id
 
 def process_video_job(scan_id: uuid.UUID, target_label: str, original_path: str, filename: str) -> None:
     """

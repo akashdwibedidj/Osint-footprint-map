@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     neo4j_uri: str
     neo4j_user: str
     neo4j_password: str
+    redis_url: str = "redis://localhost:6379/0"
 
     sherlock_cmd: str = "sherlock"
     maigret_cmd: str = "maigret"

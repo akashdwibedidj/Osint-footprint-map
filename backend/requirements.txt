@@ -47,3 +47,6 @@ ultralytics
 transformers
 pytesseract
 # geopy
+
+langchain-ollama
+langgraph
