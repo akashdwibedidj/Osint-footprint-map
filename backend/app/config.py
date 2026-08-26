@@ -35,5 +35,7 @@ class Settings(BaseSettings):
 
     tesseract_cmd: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
+    yt_dlp_output_dir: str = "uploads/yt_dlp"
+
 
 settings = Settings()

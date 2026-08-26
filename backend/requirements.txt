@@ -50,3 +50,5 @@ pytesseract
 
 langchain-ollama
 langgraph
+
+yt-dlp

@@ -2,14 +2,25 @@
 
 import asyncio
 import time
+import uuid as uuid_module
+from datetime import datetime, timezone
 
 import instaloader
 
 from app.core.tool_base import NormalizedFinding
 from app.models.finding import ExposureCategory
+from app.db.postgres import SessionLocal
+from app.models.scan import Scan
+from app.models.target import Target
+from app.services import storage
+from app.tools.yt_dlp import service as yt_dlp_service
+from app.orchestrator.registry import tools_for_input
 
 MAX_POSTS = 12          # anonymous scraping gets rate-limited fast; keep this small
 REQUEST_DELAY_S = 2.5   # delay between post fetches to reduce 429 risk
+
+TOOL_ID = "instaloader"
+ACCEPTED_INPUTS = {"username"}
 
 
 def _build_loader() -> instaloader.Instaloader:
@@ -198,3 +209,106 @@ async def run(target_value: str, **kwargs) -> list[NormalizedFinding]:
     findings += _post_findings(username, data["posts"], elapsed)
 
     return findings
+
+
+def _set_scan(scan_id, **fields) -> None:
+    db = SessionLocal()
+    try:
+        scan = db.query(Scan).filter(Scan.id == scan_id).first()
+        if not scan:
+            return
+        for k, v in fields.items():
+            setattr(scan, k, v)
+        db.commit()
+    finally:
+        db.close()
+
+
+def run_from_username(
+    target_label: str, username: str, investigation_id: uuid_module.UUID | None = None
+) -> uuid_module.UUID:
+    """
+    Sync entry point for the Celery task. Runs instaloader's own async
+    scrape, stores its findings, then hands post URLs to yt_dlp for
+    download, then dispatches each downloaded file to every matching
+    tool (exif_extractor, video_analysis) via the normal registry -
+    same dispatch mechanism as user-uploaded files, just triggered here
+    instead of at intake.
+    """
+    db = SessionLocal()
+    try:
+        target = db.query(Target).filter(Target.label == target_label).first()
+        if not target:
+            target = Target(label=target_label)
+            db.add(target)
+            db.flush()
+
+        scan = Scan(
+            target_id=target.id,
+            tool_used=TOOL_ID,
+            status="pending",
+            progress=0,
+            investigation_id=investigation_id,
+        )
+        db.add(scan)
+        db.commit()
+        db.refresh(scan)
+        scan_id = scan.id
+    finally:
+        db.close()
+
+    try:
+        _set_scan(scan_id, status="running", stage="scraping_profile", progress=10)
+
+        profile_findings = asyncio.run(run(target_value=username))
+
+        db = SessionLocal()
+        try:
+            storage.store_findings(TOOL_ID, target_label, profile_findings, db)
+        finally:
+            db.close()
+
+        _set_scan(scan_id, stage="downloading_media", progress=40)
+
+        post_urls = [
+            f["source_url"] for f in profile_findings
+            if isinstance(f, NormalizedFinding) and f.extra_metadata.get("field") == "post_image"
+        ]
+        # profile_findings above is already-built NormalizedFinding objects from
+        # _post_findings, whose source_url is the post URL (post["post_url"]).
+
+        if post_urls:
+            media_findings = asyncio.run(yt_dlp_service.run(username, post_urls))
+
+            db = SessionLocal()
+            try:
+                storage.store_findings("yt_dlp", target_label, media_findings, db)
+            finally:
+                db.close()
+
+            _set_scan(scan_id, stage="dispatching_downloads", progress=70)
+
+            for mf in media_findings:
+                local_path = mf.extra_metadata.get("local_path")
+                if not local_path:
+                    continue
+                input_type = "video" if mf.extra_metadata.get("is_video") else "image"
+                for tool in tools_for_input(input_type):
+                    from app.celery_app import celery_app
+                    celery_app.send_task(
+                        tool.task_name,
+                        args=[target_label, local_path, str(investigation_id) if investigation_id else None],
+                    )
+
+        _set_scan(
+            scan_id,
+            status="done",
+            stage="dispatching_downloads",
+            progress=100,
+            finished_at=datetime.now(timezone.utc),
+        )
+
+    except Exception as e:
+        _set_scan(scan_id, status="failed", error_message=f"{type(e).__name__}: {e}")
+
+    return scan_id

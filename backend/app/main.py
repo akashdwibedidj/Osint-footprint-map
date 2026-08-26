@@ -10,12 +10,15 @@ from app.models import finding, scan, target, classification_log  # noqa: F401  
 from app.routers import core_router
 from app.routers.history import router as history_router
 from app.orchestrator.router import router as orchestrator_router
+from fastapi.staticfiles import StaticFiles
+from app.config import settings
+
 
 app = FastAPI(title="OSINT Footprint Map")
 app.include_router(history_router)
 app.include_router(core_router.router)
 app.include_router(orchestrator_router)
-
+app.mount("/media/yt_dlp", StaticFiles(directory=settings.yt_dlp_output_dir), name="yt_dlp_media")
 registered_tools = register_tools(app)  # auto-mounts every app/tools/<name>/router.py
 
 app.add_middleware(

@@ -12,10 +12,11 @@ celery_app = Celery(
     "osint_footprint",
     broker=getattr(settings, "redis_url", "redis://localhost:6379/0"),
     backend=getattr(settings, "redis_url", "redis://localhost:6379/0"),
-    include=[
+        include=[
         "app.tools.audio_analysis.tasks",
-        "app.tools.exif_extractor.tasks",
         "app.tools.video_analysis.tasks",
+        "app.tools.exif_extractor.tasks",
+        "app.tools.instaloader.tasks",
     ],
 )
 
