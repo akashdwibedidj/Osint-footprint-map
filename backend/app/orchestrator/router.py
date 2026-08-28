@@ -39,6 +39,7 @@ def _detect_type(filename: str) -> str | None:
 async def investigate(
     label: str = Form(...),
     files: list[UploadFile] = File(default=[]),
+    usernames: list[str] = Form(default=[]),
 ):
     import uuid
     from app.orchestrator.graph import investigation_graph
@@ -53,6 +54,9 @@ async def investigate(
             f.write(await file.read())
 
         inputs.append({"file_path": saved_path, "raw_text": None, "input_type": None})
+
+    for username in usernames:
+        inputs.append({"file_path": None, "raw_text": username.strip().lstrip("@"), "input_type": "username"})
 
     result_state = investigation_graph.invoke({
         "investigation_id": investigation_id,

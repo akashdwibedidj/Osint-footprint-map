@@ -271,7 +271,7 @@ def run_from_username(
         _set_scan(scan_id, stage="downloading_media", progress=40)
 
         post_urls = [
-            f["source_url"] for f in profile_findings
+            f.source_url for f in profile_findings
             if isinstance(f, NormalizedFinding) and f.extra_metadata.get("field") == "post_image"
         ]
         # profile_findings above is already-built NormalizedFinding objects from

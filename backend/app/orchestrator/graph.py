@@ -32,7 +32,7 @@ def _detect_from_extension(file_path: str) -> str | None:
 def route_inputs(state: InvestigationState) -> InvestigationState:
     for item in state["inputs"]:
         if item["input_type"]:
-            continue  # already typed explicitly by the frontend (username box, etc.)
+            continue  # already typed explicitly by the frontend
 
         if item["file_path"]:
             detected = _detect_from_extension(item["file_path"])
@@ -42,6 +42,10 @@ def route_inputs(state: InvestigationState) -> InvestigationState:
             description = os.path.basename(item["file_path"])
         else:
             description = item["raw_text"] or ""
+            # a bare raw_text input with no file - if the frontend already
+            # tagged it as "username" via input_type, we'd have skipped above.
+            # Only reaches here if truly untyped free text - falls through
+            # to the classifier below.
 
         guess = classify_and_log(state["investigation_id"], description)
         item["input_type"] = guess
@@ -57,10 +61,13 @@ def dispatch(state: InvestigationState) -> InvestigationState:
 
         matched_tools = tools_for_input(item["input_type"])
         for tool in matched_tools:
-            celery_app.send_task(
-                tool.task_name,
-                args=[state["target_label"], item["file_path"], state["investigation_id"]],
-            )
+            if item["input_type"] == "username":
+                # username-based tools take raw_text, not file_path
+                args = [state["target_label"], item["raw_text"], state["investigation_id"]]
+            else:
+                args = [state["target_label"], item["file_path"], state["investigation_id"]]
+
+            celery_app.send_task(tool.task_name, args=args)
             dispatched.append({"tool_id": tool.tool_id, "task_name": tool.task_name})
 
     state["dispatched"] = dispatched

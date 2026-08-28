@@ -38,7 +38,12 @@ def _download_one_blocking(url: str, username: str, progress_cb=None) -> list[di
 
     results = []
     for entry in entries:
-        results.append(_download_entry(entry, url, out_dir, ffmpeg_path, progress_cb))
+        try:
+            results.append(_download_entry(entry, url, out_dir, ffmpeg_path, progress_cb))
+        except Exception as e:
+            # One bad carousel slide (e.g. yt-dlp misjudging has_video) shouldn't
+            # kill the whole post's download batch - skip it, keep the rest.
+            continue
     return results
 
 
