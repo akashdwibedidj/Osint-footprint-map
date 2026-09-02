@@ -5,14 +5,23 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+import uuid as uuid_module
+from datetime import datetime, timezone
 
 from app.core.tool_base import NormalizedFinding
 from app.models.finding import ExposureCategory
+from app.db.postgres import SessionLocal
+from app.models.scan import Scan
+from app.models.target import Target
+from app.services import storage
+
 
 GITLEAKS_BIN = "gitleaks"  # must be on PATH (see Dockerfile note)
 CLONE_TIMEOUT_S = 60
 SCAN_TIMEOUT_S = 120
 
+TOOL_ID = "gitleak_scanner"
+ACCEPTED_INPUTS = {"repo_url"}  # <- confirm this label
 
 def _normalize_repo_url(target_value: str) -> str:
     """
@@ -147,3 +156,84 @@ async def run(
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
     return findings
+
+
+def _set_scan(scan_id: uuid_module.UUID, **fields) -> None:
+    db = SessionLocal()
+    try:
+        scan = db.query(Scan).filter(Scan.id == scan_id).first()
+        if not scan:
+            return
+        for k, v in fields.items():
+            setattr(scan, k, v)
+        db.commit()
+    finally:
+        db.close()
+
+
+def run_from_repo_url(
+    target_label: str, repo_value: str, investigation_id: uuid_module.UUID | None = None
+) -> uuid_module.UUID:
+    """
+    Sync entry point for the Celery task. target_label is the OSINT target
+    this repo is being attributed to (e.g. a username or case label) -
+    repo_value is the actual git URL / owner-repo shorthand passed to run().
+    """
+    db = SessionLocal()
+    try:
+        target = db.query(Target).filter(Target.label == target_label).first()
+        if not target:
+            target = Target(label=target_label)
+            db.add(target)
+            db.flush()
+
+        scan = Scan(
+            target_id=target.id,
+            tool_used=TOOL_ID,
+            status="pending",
+            progress=0,
+            investigation_id=investigation_id,
+        )
+        db.add(scan)
+        db.commit()
+        db.refresh(scan)
+        scan_id = scan.id
+    finally:
+        db.close()
+
+    try:
+        _set_scan(scan_id, status="running", stage="cloning_and_scanning", progress=10)
+
+        import asyncio
+        findings = asyncio.run(run(repo_value))
+
+        _set_scan(scan_id, stage="storing", progress=90)
+
+        db = SessionLocal()
+        try:
+            storage.store_findings(TOOL_ID, target_label, findings, db)
+        finally:
+            db.close()
+
+        from app.db.neo4j import driver
+        with driver.session() as session:
+            storage.store_graph(
+                tool_id=TOOL_ID,
+                target_label=target_label,
+                findings=findings,
+                session=session,
+                identifier_type="repo_url",
+            )
+
+        _set_scan(
+            scan_id,
+            status="done",
+            stage="storing",
+            progress=100,
+            finished_at=datetime.now(timezone.utc),
+        )
+
+    except Exception as e:
+        _set_scan(scan_id, status="failed", error_message=f"{type(e).__name__}: {e}")
+
+    return scan_id

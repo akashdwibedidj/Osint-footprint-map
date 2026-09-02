@@ -61,8 +61,8 @@ def dispatch(state: InvestigationState) -> InvestigationState:
 
         matched_tools = tools_for_input(item["input_type"])
         for tool in matched_tools:
-            if item["input_type"] == "username":
-                # username-based tools take raw_text, not file_path
+            if item["input_type"] in ("username", "repo_url"):
+                # non-file inputs take raw_text, not file_path
                 args = [state["target_label"], item["raw_text"], state["investigation_id"]]
             else:
                 args = [state["target_label"], item["file_path"], state["investigation_id"]]

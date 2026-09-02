@@ -12,11 +12,15 @@ import uuid
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.datastructures import UploadFile as StarletteUploadFile
 
 from app.config import settings
 from app.db.postgres import get_db
 from app.models.scan import Scan
 from app.orchestrator.dispatcher import InvestigationInput, dispatch_investigation
+from fastapi import APIRouter, Depends, Request
+from fastapi.datastructures import UploadFile as StarletteUploadFil
 
 router = APIRouter(prefix="/orchestrator", tags=["orchestrator"])
 
@@ -37,12 +41,18 @@ def _detect_type(filename: str) -> str | None:
 
 @router.post("/investigate")
 async def investigate(
+    request: Request,
     label: str = Form(...),
-    files: list[UploadFile] = File(default=[]),
     usernames: list[str] = Form(default=[]),
+    repo_urls: list[str] = Form(default=[]),
+    db: Session = Depends(get_db),
 ):
     import uuid
     from app.orchestrator.graph import investigation_graph
+
+    form = await request.form()
+    raw_files = form.getlist("files")
+    files = [f for f in raw_files if isinstance(f, StarletteUploadFile) and f.filename]
 
     investigation_id = str(uuid.uuid4())
     inputs = []
@@ -56,7 +66,12 @@ async def investigate(
         inputs.append({"file_path": saved_path, "raw_text": None, "input_type": None})
 
     for username in usernames:
-        inputs.append({"file_path": None, "raw_text": username.strip().lstrip("@"), "input_type": "username"})
+        if username.strip():
+            inputs.append({"file_path": None, "raw_text": username.strip().lstrip("@"), "input_type": "username"})
+
+    for repo_url in repo_urls:
+        if repo_url.strip():
+            inputs.append({"file_path": None, "raw_text": repo_url.strip(), "input_type": "repo_url"})
 
     result_state = investigation_graph.invoke({
         "investigation_id": investigation_id,
@@ -70,6 +85,7 @@ async def investigate(
         "target_label": label,
         "dispatched": result_state["dispatched"],
     }
+
 
 @router.get("/status/{investigation_id}")
 def investigation_status(investigation_id: uuid.UUID, db: Session = Depends(get_db)):

@@ -17,6 +17,7 @@ celery_app = Celery(
         "app.tools.video_analysis.tasks",
         "app.tools.exif_extractor.tasks",
         "app.tools.instaloader.tasks",
+        "app.tools.gitleak_scanner.tasks",
     ],
 )
 
